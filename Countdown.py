@@ -1,111 +1,132 @@
 import datetime
 from nicegui import ui
 from nicegui import app
+import csv
 
-## TODO: Add events from a file. Make the gui update constantly if seconds is selected.
-## TODO: Make the gui look better. Add a countdown to the next event. Add a countdown to the end of the year.
-## TODO: remove items if they are in the past. Add a way to add events from the gui. Add a way to add events from the command line.
-## TODO: Fix how this code look cause my fucking god it look so bad.
-
+# Set the file path to the events file if it needs changing. I was using a bash script so i had to set from root.
+FILE = 'events/events.csv'
 class Countdown():
-    def __init__(self):
-        self.event_dates = {} # the items will be date,time etc etc
+    def __init__(self) -> None:
+        ## I dont like the way these variables are done. I will change to a better format later.
+        self.event_dates = {} 
         self.current_date = datetime.datetime.now()
         self.time = None
         self.dayOfYear = None
+        self.year = None
+        self.date = str(self.current_date.date()).split('-')[::-1]
+        self.date = '-'.join(self.date)
+        self.date = str(self.current_date.date())
         self.convert_current_date()
-        self.appContainter = None
+        self.closest_event = 1000
+        self.closes_event_date = None
+        self.closest_event_name = None
 
         app.native.window_args['resizable'] = False
         app.native.start_args['debug'] = False
         app.native.settings['ALLOW_DOWNLOADS'] = True
         ui.button.default_props('rounded outline')
 
-    def convert_current_date(self):
+    def get_events(self) -> None:
+        '''
+        This will get the events from a file and convert them as a dictionary
+        '''
+        with open(FILE, mode='r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row[1] == 'Date':
+                    continue
+                days = (int(row[1].split('-')[0]) - self.current_date.year) * 365
+                days += int(row[-1]) - self.dayOfYear
+                if days < 0:
+                    continue
+                self.event_dates[row[0]] = [row[1], row[2]]
+                if days < self.closest_event and days > 0:
+                    self.closest_event = days
+                    self.closest_event_name = row[0]
+                    self.closes_event_date = str(row[1])
+
+    def convert_current_date(self) -> None:
         '''
         This will convert the current date to a specified format,
         this will be changed in the future to actually be used properly.
         '''
-        listOfTime= self.current_date.timetuple()
-        # self.time = listOfTime[3],listOfTime[4],listOfTime[5]
-        self.time = self.current_date.strftime('%H:%M:%S')
         self.dayOfYear = self.current_date.timetuple().tm_yday
+        self.time = self.current_date.strftime("%H:%M:%S")
+    
+    def save_event(self, name: str, date: str, time: str) -> None:
+        '''
+        This will save the event to a file in the correct format.
 
-    def clear_gui_and_add_events(self,containers):
+        Args:
+            name (str): The name of the event inputted by the user
+            date (str): The date of the event inputted by the user
+            time (str): The time of the event inputted by the user
         '''
-        Testing of removing all elements and adding new ones.
-        Then going back to the home page. Will be called when tab is
-        switched
-        '''
-        # ui.clear() ## Find a way to do this
-        for container in containers:
-            container.clear()
-        with self.appContainter:
-            ui.label('Cleared')
-            ui.button('Back', on_click=lambda: self.appSetup())
+        
+        date = date.split(':')[-1].strip(' ')
+        day = datetime.datetime.strptime(date, '%Y-%m-%d').date()
+        start_of_year = datetime.datetime(day.year, 1, 1).date()
+        day = (day - start_of_year).days
+        
+        with open('/home/aaron/coding_projects/random_shite/Countdown-App/events/events.csv', mode='a') as f:
+            writer = csv.writer(f)
+            writer.writerow([name, date, time.split(':')[-1], day])
 
-    def homePage(self):
+    def setUpPage(self) -> None:
         '''
-        The setup for the home page. This will be the first page displayed
-        and includes tabs for the user to switch between the home page, all events.
-        This also includes a calendar that will display the closest event.
+        This will set up all the ui and functionallity for the app.
+        This makes two rows, one for the countdown and one for the events.
         '''
-        tab = ui.row().style('justify-content: center; margin-top: 20px; width: 130vh;')
-        textAndButtons = ui.row().style('justify-content: center; margin-top: 20px; width: 100%;')
-        calendar = ui.row().style('justify-content: center; margin-top: 20px; width: 100%;')
-        with tab:
-                with ui.tabs().classes('w-full') as tabs:
-                    one = ui.tab('Home Page')
-                    two = ui.tab('All events')
-                    three = ui.tab('Manage events')
-                with ui.tab_panels(tabs, value=one).classes('w-full'):
-                    with ui.tab_panel(one):
-                        ui.label('Home Page')
-                    with ui.tab_panel(two):
-                        ui.label('All events')
-                    with ui.tab_panel(three):
-                        ui.label('Manage events')
+        with ui.row().style('display: flex; justify-content: center; margin-top: 50px; width: 130vh;'):
+            ui.label('Countdown').style('font-size: 50px;')
+
+        textAndButtons = ui.row().style('display: flex; justify-content: space-between; margin-top: 50px; width: 130vh;')
+        ui.separator()
+        
+        with ui.row().style('display: flex; justify-content: center; margin-top: 50px; width: 130vh;'):
+            ui.label('Make a new event').style('font-size: 40px;')
+        
+        makeEvent = ui.row().style('display: flex; justify-content: space-between; margin-top: 50px; width: 130vh;')
 
         with textAndButtons:
-            with ui.card() as a:
-                ui.label('Select what type of countdown you want')
-                ui.label('1. Days')
-                ui.label('2. Days and actual time')
-                ui.label('3. Select events from a file')
-            with ui.row().style('justify-content: center; margin-top: 0px; width: 100%;'):
-                ui.button('Days', on_click=lambda: ui.label('Countdown\nDays: ' + str(365 - self.dayOfYear)))
-                ui.button('Days and Time', on_click=lambda: ui.label('Countdown\nDays: ' + str(365 - self.dayOfYear) + '\nTime: ' + self.time))
-                ui.button('Clear', on_click=lambda: self.clear_gui_and_add_events([tab,textAndButtons,calendar]))
+            with ui.card().style('height: 45vh; width: 40vh') as a:
+                # Make the closest event
+                ui.label('Closest event').style('font-size: 40px;')
+                ui.label(f'{self.closest_event_name} - {self.closest_event} days away').style('font-size: 30px;')
+                ui.label(f'Date: {self.event_dates[self.closest_event_name][0]}').style('font-size: 20px;')
 
-        # with ui.row(): # scrollable area
-        #     with ui.scroll_area().classes('w-32 h-32 border'):
-        #         ui.label('I scroll. ' * 20)
+            with ui.card().style('height: 45vh; width: 40vh;') as a:
+                # Make all events display here
+                with ui.list().props('dense separator'):
+                    for event in self.event_dates:
+                        ui.item(f'{event} - {self.event_dates[event][0]} - {self.event_dates[event][1]}').style('font-size: 20px;')
+            
+            ui.date({'from': str(self.date), 'to': str(self.closes_event_date)}).props('range').style('height: 45vh; width: 40vh;')
 
-        ## Make this display the closest event
-        with calendar:
-            ui.date({'from': '2023-01-01', 'to': '2023-01-05'}).props('range')
-        return [tab,textAndButtons,calendar]
+        with makeEvent:
+            with ui.card() as card:
+                name = ui.input('Name', value='Paul', on_change=lambda e: label.set_text(f'Name: {e.value}'))
+                name.add_slot('append')
+                icon = ui.icon('face')
 
-    def appSetup(self):
-        '''
-        This will setup the app and display the home page. It is 
-        within its own function as it will make it easier to switch pages
-        '''
-        ## This function is needed to ensure we can clear the gui and add new events
-        if self.appContainter:
-            self.appContainter.clear()
-        self.appContainter = ui.column().style('height: 75vh; justify-content: center; align-items: center; display: flex;')
-        with self.appContainter:
-            container = self.homePage()
+            date = ui.date(value=self.current_date, on_change=lambda e: date.set_text(f'Date: {e.value}'))
+            clock = ui.time(value='12:00', on_change=lambda e: time.set_text(f'Time: {e.value}'))
+            
+            with ui.card():
+                with ui.column().style('width: 30vh;'):
+                    date = ui.label(f'Date: {date.value.date()}')
+                    time = ui.label(f'Time: {clock.value}')
+                    label = ui.label(f'Name: {name.value}')
+                    ui.button('Save', on_click=lambda: self.save_event(name.value, date.text, time.text))
+                    ui.button('Cancel', on_click=lambda: print('Cancel'))
 
 
-    def runApp(self):
+    def runApp(self) -> None:
         '''
         This will run the app and display the home page
         '''
-        with ui.row().style('justify-content: center; margin-top: 20px; width: 100%;'):
-            ui.label('Countdown').style('font-size: 50px;')
-        self.appSetup()
+        self.get_events()
+        self.setUpPage()
 
         ui.run(
             title='Countdown',
@@ -115,13 +136,9 @@ class Countdown():
             reload=False,
             dark=None, # uses auto
             tailwind=False # cant use auto without disabling this
-        )
-
-def main():
-    ## May remove this function later
-    countdown = Countdown()
-    countdown.runApp()     
+        )     
 
 
 if __name__ in {"__main__", "__mp_main__"}:
-    main()
+    countdown = Countdown()
+    countdown.runApp()
