@@ -8,16 +8,9 @@ import numpy as np
 FILE = 'events/events.csv'
 class Countdown():
     def __init__(self) -> None:
-        ## I dont like the way these variables are done. I will change to a better format later.
         self.event_dates = {} 
         self.current_date = datetime.datetime.now()
-        self.time = None
-        self.dayOfYear = None
-        self.year = None
-        self.date = str(self.current_date.date()).split('-')[::-1]
-        self.date = '-'.join(self.date)
-        self.date = str(self.current_date.date())
-        self.convert_current_date()
+        self.dayOfYear = self.current_date.timetuple().tm_yday
         self.closest_event = 1000
         self.closes_event_date = None
         self.closest_event_name = None
@@ -27,6 +20,21 @@ class Countdown():
         app.native.start_args['debug'] = False
         app.native.settings['ALLOW_DOWNLOADS'] = True
         ui.button.default_props('rounded outline')
+    
+    def format_date(self, date: str) -> str:
+        '''
+        This will format the date to the correct format
+        without cluttering up the __init__ function
+
+        Args:
+            date (str): The date to be formatted
+
+        Returns:
+            str: The formatted date
+        '''
+        date = date.split('-')
+        date = '-'.join(date)
+        return date
 
     def get_events(self) -> None:
         '''
@@ -38,7 +46,9 @@ class Countdown():
                 if row[1] == 'Date':
                     continue
                 days = (int(row[1].split('-')[0]) - self.current_date.year) * 365
-                days += int(row[-1]) - (self.dayOfYear - 1)
+                ## convert current_day.day to what day in year it is
+
+                days += int(row[-1]) - (self.dayOfYear- 1)
                 if days == 0:
                     time = row[2].split(':')
                     self.event_dates[row[0]] = [row[1], row[2]]
@@ -65,14 +75,6 @@ class Countdown():
                     self.closest_event_name = row[0]
                     self.closes_event_date = str(row[1])
                     self.time_unit = 'days'
-
-    def convert_current_date(self) -> None:
-        '''
-        This will convert the current date to a specified format,
-        this will be changed in the future to actually be used properly.
-        '''
-        self.dayOfYear = self.current_date.timetuple().tm_yday
-        self.time = self.current_date.strftime("%H:%M:%S")
     
     def save_event(self, name: str, date: str, time: str) -> None:
         '''
@@ -98,6 +100,7 @@ class Countdown():
             writer = csv.writer(f)
             writer.writerow([name, date, time, day])
         
+        ui.notify('Event Added', type='positive')
     
     def setUpPage(self) -> None:
         '''
@@ -129,7 +132,9 @@ class Countdown():
                     for event in self.event_dates:
                         ui.item(f'{event} - {self.event_dates[event][0]} - {self.event_dates[event][1]}').style('font-size: 20px;')
             
-            ui.date({'from': str(self.date), 'to': str(self.closes_event_date)}).props('range').style('height: 45vh; width: 40vh;')
+            ui.date({
+                'from': self.format_date(str(self.current_date.date())),
+                'to': str(self.closes_event_date)}).props('range').style('height: 45vh; width: 40vh;')
         with makeEvent:
             with ui.card() as card:
                 name = ui.input('Name', value='Paul', on_change=lambda e: label.set_text(f'Name: {e.value}'))
