@@ -29,3 +29,6 @@ Below is the desing for adding an event to the file. This uses a text input time
 - Mulitple pages instead of one
 - A live countdown that will update
 - Update after adding event
+
+## Quick note
+This project was a small thing I did to learn a nice gui framework within python for simple apps like this and to also have a desktop app to for exams and things like that so it is not the best app but functionally works. I dont have time to update things like the `__init__` function which is in need of changing as I dont have the time. But I will come back to this and fix hopefully everything I have mentioned.
