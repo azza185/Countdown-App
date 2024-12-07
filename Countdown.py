@@ -98,9 +98,6 @@ class Countdown():
             writer = csv.writer(f)
             writer.writerow([name, date, time, day])
         
-        ui.notify('Event Added', type='positive')
-        self.get_events()
-        self.setUpPage()
     
     def setUpPage(self) -> None:
         '''
