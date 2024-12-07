@@ -67,10 +67,12 @@ class Countdown():
         day = datetime.datetime.strptime(date, '%Y-%m-%d').date()
         start_of_year = datetime.datetime(day.year, 1, 1).date()
         day = (day - start_of_year).days
-        
+        time = time.split(':')
+        print(time)
+        time = time[-2] + ':' + time[-1]
         with open('/home/aaron/coding_projects/random_shite/Countdown-App/events/events.csv', mode='a') as f:
             writer = csv.writer(f)
-            writer.writerow([name, date, time.split(':')[-1], day])
+            writer.writerow([name, date, time, day])
 
     def setUpPage(self) -> None:
         '''
