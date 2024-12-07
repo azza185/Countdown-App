@@ -86,16 +86,22 @@ class Countdown():
         if name in self.event_dates:
             ui.notify('Event Already Exists', type='negative')
             return
+        
         date = date.split(':')[-1].strip(' ')
         day = datetime.datetime.strptime(date, '%Y-%m-%d').date()
         start_of_year = datetime.datetime(day.year, 1, 1).date()
         day = (day - start_of_year).days
         time = time.split(':')
         time = time[-2].strip(' ') + ':' + time[-1]
-        with open('/home/aaron/coding_projects/random_shite/Countdown-App/events/events.csv', mode='a') as f:
+        
+        with open(FILE, mode='a') as f:
             writer = csv.writer(f)
             writer.writerow([name, date, time, day])
-
+        
+        ui.notify('Event Added', type='positive')
+        self.get_events()
+        self.setUpPage()
+    
     def setUpPage(self) -> None:
         '''
         This will set up all the ui and functionallity for the app.
@@ -106,7 +112,6 @@ class Countdown():
 
         textAndButtons = ui.row().style('display: flex; justify-content: space-between; margin-top: 50px; width: 130vh;')
         ui.separator()
-        
         with ui.row().style('display: flex; justify-content: center; margin-top: 50px; width: 130vh;'):
             ui.label('Make a new event').style('font-size: 40px;')
         
@@ -128,7 +133,6 @@ class Countdown():
                         ui.item(f'{event} - {self.event_dates[event][0]} - {self.event_dates[event][1]}').style('font-size: 20px;')
             
             ui.date({'from': str(self.date), 'to': str(self.closes_event_date)}).props('range').style('height: 45vh; width: 40vh;')
-
         with makeEvent:
             with ui.card() as card:
                 name = ui.input('Name', value='Paul', on_change=lambda e: label.set_text(f'Name: {e.value}'))
