@@ -2,6 +2,7 @@ import datetime
 from nicegui import ui
 from nicegui import app
 import csv
+import numpy as np
 
 # Set the file path to the events file if it needs changing. I was using a bash script so i had to set from root.
 FILE = 'events/events.csv'
@@ -20,6 +21,7 @@ class Countdown():
         self.closest_event = 1000
         self.closes_event_date = None
         self.closest_event_name = None
+        self.time_unit = 'days'
 
         app.native.window_args['resizable'] = False
         app.native.start_args['debug'] = False
@@ -36,14 +38,33 @@ class Countdown():
                 if row[1] == 'Date':
                     continue
                 days = (int(row[1].split('-')[0]) - self.current_date.year) * 365
-                days += int(row[-1]) - self.dayOfYear
-                if days < 0:
+                days += int(row[-1]) - (self.dayOfYear - 1)
+                if days == 0:
+                    time = row[2].split(':')
+                    self.event_dates[row[0]] = [row[1], row[2]]
+
+                    current_time = (self.current_date.hour + self.current_date.minute / 60)
+                    how_far_in_day = (int(time[0]) + int(time[1]) / 60) - current_time
+
+                    if self.time_unit == 'hours' and how_far_in_day > self.closest_event:
+                        continue
+
+                    self.closest_event = how_far_in_day
+                    self.closest_event_name = row[0]
+                    self.closes_event_date = str(row[1])
+                    self.time_unit = 'hours'
+
                     continue
+                elif days < 0:
+                    continue
+
                 self.event_dates[row[0]] = [row[1], row[2]]
-                if days < self.closest_event and days > 0:
+                ## No point going into this if hours has already be done
+                if days < self.closest_event and days > 0 and self.time_unit == 'days':
                     self.closest_event = days
                     self.closest_event_name = row[0]
                     self.closes_event_date = str(row[1])
+                    self.time_unit = 'days'
 
     def convert_current_date(self) -> None:
         '''
@@ -62,14 +83,15 @@ class Countdown():
             date (str): The date of the event inputted by the user
             time (str): The time of the event inputted by the user
         '''
-        
+        if name in self.event_dates:
+            ui.notify('Event Already Exists', type='negative')
+            return
         date = date.split(':')[-1].strip(' ')
         day = datetime.datetime.strptime(date, '%Y-%m-%d').date()
         start_of_year = datetime.datetime(day.year, 1, 1).date()
         day = (day - start_of_year).days
         time = time.split(':')
-        print(time)
-        time = time[-2] + ':' + time[-1]
+        time = time[-2].strip(' ') + ':' + time[-1]
         with open('/home/aaron/coding_projects/random_shite/Countdown-App/events/events.csv', mode='a') as f:
             writer = csv.writer(f)
             writer.writerow([name, date, time, day])
@@ -93,8 +115,10 @@ class Countdown():
         with textAndButtons:
             with ui.card().style('height: 45vh; width: 40vh') as a:
                 # Make the closest event
+                if self.time_unit == 'hours':
+                    self.closest_event = np.round(self.closest_event,5)
                 ui.label('Closest event').style('font-size: 40px;')
-                ui.label(f'{self.closest_event_name} - {self.closest_event} days away').style('font-size: 30px;')
+                ui.label(f'{self.closest_event_name} - {self.closest_event} {self.time_unit} away').style('font-size: 30px;')
                 ui.label(f'Date: {self.event_dates[self.closest_event_name][0]}').style('font-size: 20px;')
 
             with ui.card().style('height: 45vh; width: 40vh;') as a:
@@ -120,7 +144,6 @@ class Countdown():
                     time = ui.label(f'Time: {clock.value}')
                     label = ui.label(f'Name: {name.value}')
                     ui.button('Save', on_click=lambda: self.save_event(name.value, date.text, time.text))
-                    ui.button('Cancel', on_click=lambda: print('Cancel'))
 
 
     def runApp(self) -> None:
